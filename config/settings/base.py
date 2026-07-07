@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "organizations",
     "integrations",
     "scanning",
+    "payroll",
 ]
 
 MIDDLEWARE = [

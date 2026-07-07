@@ -33,6 +33,15 @@ class CustomUser(AbstractUser):
         default=Role.WORKER,
         verbose_name="роль",
     )
+    shop = models.ForeignKey(
+        "organizations.Shop",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="staff",
+        verbose_name="склад",
+        help_text="Заполняется для менеджеров и работников; у владельца остаётся пустым.",
+    )
 
     def __str__(self):
         return f"{self.get_full_name() or self.username} ({self.role})"
