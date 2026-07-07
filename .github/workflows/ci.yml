@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Настройка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+
+      - name: Установка зависимостей
+        run: pip install -r requirements-dev.txt
+
+      - name: Подготовка файла окружения
+        run: cp .env.example .env
+
+      - name: Линтеры (black, isort, flake8)
+        run: |
+          black --check .
+          isort --check-only .
+          flake8 .
+
+      - name: Запуск тестов с покрытием
+        run: pytest --cov=. --cov-report=term-missing
