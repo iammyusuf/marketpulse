@@ -2,8 +2,9 @@ from rest_framework import generics, permissions, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .mixins import RoleScopedQuerysetMixin
 from .models import CustomUser, Role
-from .permissions import IsOwner
+from .permissions import IsOwner, IsOwnerOrManager
 from .serializers import RegisterSerializer, StaffCreateSerializer, StaffSerializer, UserSerializer
 
 
@@ -25,17 +26,25 @@ class MeView(APIView):
         return Response(serializer.data)
 
 
-class StaffViewSet(viewsets.ModelViewSet):
-    """Владелец управляет менеджерами/работниками своей организации."""
+class StaffViewSet(RoleScopedQuerysetMixin, viewsets.ModelViewSet):
+    """
+    Владелец управляет менеджерами/работниками своей организации.
+    Менеджер может только просматривать (не редактировать) работников своего
+    склада — нужно, например, чтобы выбрать работника при создании смены.
+    """
 
-    permission_classes = [permissions.IsAuthenticated, IsOwner]
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
+    def get_permissions(self):
+        if self.request.method not in permissions.SAFE_METHODS:
+            return [permissions.IsAuthenticated(), IsOwner()]
+        return [permissions.IsAuthenticated(), IsOwnerOrManager()]
+
     def get_queryset(self):
-        return CustomUser.objects.filter(
-            organization=self.request.user.organization,
-            role__in=[Role.MANAGER, Role.WORKER],
-        ).order_by("username")
+        # worker сюда не попадает — get_permissions() блокирует его 403-м
+        # ещё до вызова queryset (на чтение нужен минимум IsOwnerOrManager).
+        qs = CustomUser.objects.filter(role__in=[Role.MANAGER, Role.WORKER]).order_by("username")
+        return self.scope_by_role(qs)
 
     def get_serializer_class(self):
         return StaffCreateSerializer if self.action == "create" else StaffSerializer

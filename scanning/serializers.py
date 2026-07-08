@@ -6,9 +6,23 @@ from .models import Device, ScanEvent
 
 
 class DeviceSerializer(serializers.ModelSerializer):
+    # Позволяет менеджеру видеть, за кем закреплено устройство, не обращаясь
+    # к /api/accounts/staff/ (владелец-only) отдельным запросом.
+    assigned_worker_username = serializers.CharField(
+        source="assigned_worker.username", read_only=True, default=None
+    )
+
     class Meta:
         model = Device
-        fields = ["id", "shop", "assigned_worker", "identifier", "is_active", "created_at"]
+        fields = [
+            "id",
+            "shop",
+            "assigned_worker",
+            "assigned_worker_username",
+            "identifier",
+            "is_active",
+            "created_at",
+        ]
         read_only_fields = ["id", "created_at"]
 
     def validate(self, attrs):

@@ -91,3 +91,23 @@ def test_deactivate_staff_soft_deletes(api_client, owner_user, worker_user):
     assert response.status_code == 204
     worker_user.refresh_from_db()
     assert worker_user.is_active is False
+
+
+def test_manager_can_list_staff_scoped_to_own_shop(api_client, organization, manager_user, worker_user):
+    """Менеджер видит (read-only) работников своего склада — нужно для выбора при создании смены."""
+    other_shop_worker = CustomUser.objects.create_user(
+        username="other_shop_worker", password="strongpass123", organization=organization, role=Role.WORKER
+    )
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.get("/api/accounts/staff/")
+    assert response.status_code == 200
+    usernames = {row["username"] for row in response.data["results"]}
+    assert usernames == {manager_user.username, worker_user.username}
+    assert other_shop_worker.username not in usernames
+
+
+def test_worker_cannot_list_staff(api_client, worker_user):
+    """Работник не получает список сотрудников (только owner/manager)."""
+    api_client.force_authenticate(user=worker_user)
+    response = api_client.get("/api/accounts/staff/")
+    assert response.status_code == 403
